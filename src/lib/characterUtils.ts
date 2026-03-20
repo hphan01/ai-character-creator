@@ -9,7 +9,7 @@ export interface CharacterOptions {
 }
 
 export const characterOptions = {
-  races: [
+  race: [
     'Human female',
     'Human male',
     'Elf female',
@@ -27,7 +27,7 @@ export const characterOptions = {
     'Hybrid',
     'Alien',
   ],
-  outfits: [
+  outfit: [
     'Medieval warrior armor',
     'Elegant ball gown',
     'Casual modern clothes',
@@ -44,7 +44,7 @@ export const characterOptions = {
     'Tactical gear',
     'Academic robes',
   ],
-  hairstyles: [
+  hairstyle: [
     'Long wavy hair',
     'Short pixie cut',
     'Braided crown',
@@ -60,7 +60,7 @@ export const characterOptions = {
     'Messy bun',
     'Shaved sides',
   ],
-  styles: [
+  style: [
     'Realistic detailed portrait',
     'Fantasy art style',
     'Anime style',
@@ -75,7 +75,7 @@ export const characterOptions = {
     'Illustration',
     'Storybook art',
   ],
-  expressions: [
+  expression: [
     'Confident and proud',
     'Mysterious and brooding',
     'Cheerful and friendly',
@@ -86,7 +86,7 @@ export const characterOptions = {
     'Fierce and angry',
     'Playful and mischievous',
   ],
-  settings: [
+  setting: [
     'Plain background',
     'Fantasy forest',
     'Dark castle interior',
