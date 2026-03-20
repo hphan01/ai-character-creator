@@ -24,7 +24,32 @@ function ShareMenu({ prompt, image }: { prompt: string; image: string }) {
 
   const shareText = encodeURIComponent(`Check out this AI character I created! 🎨\n\n"${prompt.slice(0, 200)}"\n\n#AIArt #CharForge #AICharacter`)
 
-  const handleTwitter = () => {
+  const handleTwitter = async () => {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    const fileName = `charforge-${timestamp}.png`
+
+    // Try Web Share API with file attachment (supported on mobile / modern browsers)
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        const res = await fetch(image)
+        const blob = await res.blob()
+        const file = new File([blob], fileName, { type: 'image/png' })
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: 'AI Character – CharForge',
+            text: decodeURIComponent(shareText),
+            files: [file],
+          })
+          setOpen(false)
+          return
+        }
+      } catch (err) {
+        console.error('Web Share failed, falling back to Twitter intent:', err)
+      }
+    }
+
+    // Fallback: download the image so the user can attach it, then open Twitter
+    downloadImage(image, fileName)
     window.open(`https://twitter.com/intent/tweet?text=${shareText}`, '_blank', 'noopener,noreferrer')
     setOpen(false)
   }
@@ -73,6 +98,7 @@ function ShareMenu({ prompt, image }: { prompt: string; image: string }) {
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L2.004 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
             </svg>
             Share on X (Twitter)
+            <span className="ml-auto text-xs text-gray-500 font-normal">saves image</span>
           </button>
 
           <div className="border-t border-neutral-800" />
