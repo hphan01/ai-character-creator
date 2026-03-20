@@ -29,9 +29,9 @@ describe('CharacterCustomizer', () => {
     expect(screen.getByText('Character Presets')).toBeInTheDocument()
   })
 
-  it('renders all five preset buttons', () => {
+  it('renders all six preset buttons including ninja', () => {
     render(<CharacterCustomizer />)
-    ;['warrior', 'mage', 'rogue', 'paladin', 'fairy'].forEach((preset) => {
+    ;['warrior', 'mage', 'rogue', 'paladin', 'fairy', 'ninja'].forEach((preset) => {
       expect(screen.getByRole('button', { name: new RegExp(preset, 'i') })).toBeInTheDocument()
     })
   })
@@ -158,5 +158,88 @@ describe('CharacterCustomizer', () => {
     ) as HTMLTextAreaElement
     fireEvent.change(textarea, { target: { value: 'holding a staff' } })
     expect(textarea.value).toBe('holding a staff')
+  })
+
+  // ── Custom Prompt mode ──────────────────────────────────────────────────────
+
+  it('renders the Custom Prompt button', () => {
+    render(<CharacterCustomizer />)
+    expect(screen.getByRole('button', { name: /custom prompt/i })).toBeInTheDocument()
+  })
+
+  it('switches to custom prompt mode when Custom Prompt is clicked', () => {
+    render(<CharacterCustomizer />)
+    fireEvent.click(screen.getByRole('button', { name: /custom prompt/i }))
+    expect(screen.getByRole('heading', { name: /custom prompt/i })).toBeInTheDocument()
+    expect(screen.queryByText('Customize Character')).not.toBeInTheDocument()
+  })
+
+  it('shows the custom prompt textarea in custom mode', () => {
+    render(<CharacterCustomizer />)
+    fireEvent.click(screen.getByRole('button', { name: /custom prompt/i }))
+    expect(screen.getByLabelText('Custom prompt')).toBeInTheDocument()
+  })
+
+  it('disables Generate when custom mode is active but prompt is empty', () => {
+    render(<CharacterCustomizer />)
+    fireEvent.click(screen.getByRole('button', { name: /custom prompt/i }))
+    expect(screen.getByRole('button', { name: /generate character/i })).toBeDisabled()
+  })
+
+  it('enables Generate once custom prompt has text', () => {
+    render(<CharacterCustomizer />)
+    fireEvent.click(screen.getByRole('button', { name: /custom prompt/i }))
+    fireEvent.change(screen.getByLabelText('Custom prompt'), {
+      target: { value: 'a red dragon breathing fire' },
+    })
+    expect(screen.getByRole('button', { name: /generate character/i })).not.toBeDisabled()
+  })
+
+  it('sends the custom prompt directly to the API', async () => {
+    global.fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ image: 'data:image/png;base64,ok' }), { status: 200 })
+    )
+
+    render(<CharacterCustomizer />)
+    fireEvent.click(screen.getByRole('button', { name: /custom prompt/i }))
+    fireEvent.change(screen.getByLabelText('Custom prompt'), {
+      target: { value: 'a red dragon breathing fire' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /generate character/i }))
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1))
+    const body = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body)
+    expect(body.prompt).toBe('a red dragon breathing fire')
+    expect(body.style).toBeUndefined()
+  })
+
+  it('tags the saved image as Custom in custom mode', async () => {
+    global.fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ image: 'data:image/png;base64,ok' }), { status: 200 })
+    )
+
+    render(<CharacterCustomizer />)
+    fireEvent.click(screen.getByRole('button', { name: /custom prompt/i }))
+    fireEvent.change(screen.getByLabelText('Custom prompt'), {
+      target: { value: 'a warrior in snow' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /generate character/i }))
+
+    await waitFor(() => expect(storeState.addImage).toHaveBeenCalledTimes(1))
+    expect(storeState.addImage.mock.calls[0][0].tags).toEqual(['Custom'])
+  })
+
+  it('returns to dropdown mode via "Back to dropdowns" link', () => {
+    render(<CharacterCustomizer />)
+    fireEvent.click(screen.getByRole('button', { name: /custom prompt/i }))
+    fireEvent.click(screen.getByText(/← Back to dropdowns/i))
+    expect(screen.getByText('Customize Character')).toBeInTheDocument()
+  })
+
+  it('switching to a preset from custom mode restores the dropdowns', () => {
+    render(<CharacterCustomizer />)
+    fireEvent.click(screen.getByRole('button', { name: /custom prompt/i }))
+    fireEvent.click(screen.getByRole('button', { name: /mage/i }))
+    expect(screen.getByText('Customize Character')).toBeInTheDocument()
   })
 })
