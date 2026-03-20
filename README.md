@@ -1,167 +1,125 @@
-# AI Character Creator
+# CharForge AI
 
-A web application for generating stunning AI character images with customizable features, similar to mage.space. Built with Next.js and Hugging Face's Stable Diffusion models.
+A web application for generating AI character images with deep customisation and a **human-realistic portrait mode** powered by the Flux Super Realism LoRA. Built with Next.js 14, React 18, and Hugging Face inference.
 
-![AI Character Creator](https://img.shields.io/badge/Next.js-14-black) ![React](https://img.shields.io/badge/React-18-blue) ![License](https://img.shields.io/badge/license-MIT-green)
+![Next.js](https://img.shields.io/badge/Next.js-14-black) ![React](https://img.shields.io/badge/React-18-blue) ![Vitest](https://img.shields.io/badge/tested%20with-Vitest-6E9F18) ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Features
 
-✨ **Character Customization**
-- Choose from diverse races, outfits, hairstyles
-- Select art styles (realistic, fantasy, anime, etc.)
-- Set character expressions and environments
-- Add custom details for unique creations
+✨ **Deep Character Customisation**
+- Diverse races, outfits, hairstyles, expressions, and settings
+- 14 art styles including the new **Human Realistic** mode for photographic portraits
+- Free-text additional details field for one-off tweaks
 
-🎨 **5 Character Presets**
-- Warrior, Mage, Rogue, Paladin, Fairy
-- One-click preset loading for quick character creation
+🎨 **5 Quick-Start Presets**
+- Warrior, Mage, Rogue, Paladin, Fairy — one-click preset loading
 
-💾 **Image Gallery & History**
-- Automatic saving of all generated images
-- Browse and manage your character collection
-- Tag and organize generated images
-- Local storage persistence
+📸 **Human Realistic Mode**
+- Powered by [`strangerzonehf/Flux-Super-Realism-LoRA`](https://huggingface.co/strangerzonehf/Flux-Super-Realism-LoRA) — a FLUX-based LoRA fine-tuned for hyper-realistic human portraits
+- Automatically activates the LoRA trigger word, injects a negative prompt, and uses optimised inference parameters (35 steps, guidance 7.0) to eliminate cartoonish output
+- Falls back to `FLUX.1-schnell` (within the FLUX family) if the realism model is unavailable instead of dropping to older SD models
 
-🔄 **Editing & Refinement**
-- Regenerate with same or modified settings
-- Adjust prompts and regenerate
-- Compare variations
+🤖 **Smart Model Routing**
+- Style-aware model selection: Human Realistic → Flux-Super-Realism-LoRA; all other styles → FLUX.1-schnell (or your `NEXT_PUBLIC_HF_MODEL` override)
+- Per-model timeout tuning and exponential-backoff retry logic
 
-📥 **Share & Export**
-- Download images as PNG
-- Share via built-in share button
-- Copy prompts for later use or sharing
+💾 **Gallery & History**
+- Auto-saves every generated image to browser localStorage
+- Tag images for organisation; remove individual tags with one click
+- Delete single images or clear the entire gallery
+
+📤 **Share & Export**
+- Download as PNG
+- Share directly to **X (Twitter)**, **Instagram**, or **TikTok** via native share menus
+- "More…" option invokes the browser's native Web Share API where supported
+- Copy prompt to clipboard
+
+🧪 **Full Test Coverage**
+- 60 tests across all components and utilities using **Vitest** + React Testing Library
+- Run with `npm test` or get coverage with `npm run test:coverage`
 
 ## Tech Stack
 
-- **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS
-- **State Management**: Zustand
-- **AI Backend**: Hugging Face Stable Diffusion 2.1
-- **Icons**: Lucide React
-- **Storage**: Browser LocalStorage
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 14 (App Router) |
+| UI | React 18, TypeScript, Tailwind CSS |
+| State | Zustand (localStorage-persisted) |
+| AI — Realism | `strangerzonehf/Flux-Super-Realism-LoRA` |
+| AI — Default | `black-forest-labs/FLUX.1-schnell` |
+| Icons | Lucide React |
+| Testing | Vitest, React Testing Library, @testing-library/jest-dom |
 
 ## Prerequisites
 
-- Node.js 18+ and npm/yarn
-- Free Hugging Face API key (https://huggingface.co/settings/tokens)
+- Node.js 18+ and npm
+- Free Hugging Face API key — <https://huggingface.co/settings/tokens>
 
-## Setup Instructions
+## Setup
 
-### 1. Clone the Repository
-```bash
-cd ai-character-creator
-```
-
-### 2. Get Your Hugging Face API Key
-
-1. Go to https://huggingface.co/settings/tokens
-2. Click "New token"
-3. Create a token with `read` access
-4. Copy the token
-
-### 3. Install Dependencies
+### 1. Install dependencies
 ```bash
 npm install
-# or
-yarn install
 ```
 
-### 4. Configure Environment Variables
+### 2. Get your Hugging Face API key
 
-Create a `.env.local` file in the root directory:
+1. Go to <https://huggingface.co/settings/tokens>
+2. Create a token with **Read** access
+3. Copy the token
+
+### 3. Configure environment variables
+
+Create a `.env.local` file in the project root:
 ```env
 NEXT_PUBLIC_HF_API_KEY=your_hugging_face_api_key_here
-NEXT_PUBLIC_HF_MODEL=stabilityai/stable-diffusion-2-1
+
+# Optional: override the default model for non-realism styles
+# NEXT_PUBLIC_HF_MODEL=black-forest-labs/FLUX.1-schnell
 ```
 
-Replace `your_hugging_face_api_key_here` with your actual API key.
-
-### 5. Run Development Server
+### 4. Run the dev server
 ```bash
 npm run dev
-# or
-yarn dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open <http://localhost:3000> in your browser.
 
 ## Usage
 
-1. **Create Character Tab**: 
-   - Use presets or customize individual features
-   - Add additional details in the text area
-   - Click "Generate Character"
-   - Wait 30-60 seconds for image generation
+### Create Character tab
+1. Pick a preset or customise each field individually
+2. Set **Style** to **Human Realistic** for photographic portraits
+3. Click **Generate Character** — allow 30–120 seconds depending on the model
+4. Use **Refine** to regenerate with the same settings, or tweak options first
 
-2. **Gallery Tab**:
-   - Browse all previously generated characters
-   - Click an image to view details
-   - Add tags for organization
-   - Download or share images
-   - Delete images or clear entire gallery
+### Gallery tab
+- Click any thumbnail to open the detail panel
+- Add / remove tags for organisation
+- Download, share, or delete from the detail panel
 
-## Generation Times
+## Model Reference
 
-- First generation: 30-60 seconds (model initialization)
-- Subsequent generations: 20-45 seconds
-- Varies based on Hugging Face server load
+| Style selected | Model used | Notes |
+|---|---|---|
+| Human Realistic | `strangerzonehf/Flux-Super-Realism-LoRA` | LoRA on FLUX; trigger word `fluxlora` applied automatically |
+| All other styles | `black-forest-labs/FLUX.1-schnell` | Fast FLUX base model |
+| Fallback (any) | `black-forest-labs/FLUX.1-schnell` | Used when primary unavailable |
+| Fallback (non-realism) | `stabilityai/stable-diffusion-xl-base-1.0` | Second fallback for non-realism styles |
 
-## Available Models
+To always use a specific model for non-realism styles, set `NEXT_PUBLIC_HF_MODEL` in `.env.local`.
 
-You can switch between different Stable Diffusion models by changing `NEXT_PUBLIC_HF_MODEL`:
-
-- `stabilityai/stable-diffusion-2-1` - Best quality
-- `stabilityai/stable-diffusion-2-1-base` - Faster
-- `runwayml/stable-diffusion-v1-5` - Alternative, often faster
-- `CompVis/stable-diffusion-v1-4` - Legacy
-
-## Troubleshooting
-
-### "Model is loading" Error
-- The model takes time to load on first use
-- Wait a minute and try again
-- Hugging Face free tier has auto-sleep
-
-### API Key Not Working
-- Verify the token at https://huggingface.co/settings/tokens
-- Make sure first character is NOT missing
-- Restart the dev server after changing .env.local
-
-### Images Not Saving
-- Check browser localStorage limits
-- Try clearing cache if storage is full
-- Use gallery to delete older images
-
-### Slow Generation
-- Hugging Face free tier is slower during peak hours
-- Consider using a different model
-- Premium API key would be faster
-
-## Deployment
-
-### Deploy to Vercel (Recommended)
-
-1. Push your code to GitHub
-2. Go to [vercel.com](https://vercel.com)
-3. Import your repository
-4. Add environment variables:
-   - `NEXT_PUBLIC_HF_API_KEY` = Your Hugging Face token
-5. Deploy!
+## Scripts
 
 ```bash
-# Or deploy directly:
-npm install -g vercel
-vercel
+npm run dev          # Start development server
+npm run build        # Production build
+npm run start        # Run production build
+npm run lint         # ESLint
+npm test             # Run all tests (Vitest)
+npm run test:watch   # Watch mode
+npm run test:coverage # Coverage report (HTML + lcov)
 ```
-
-### Deploy to Other Platforms
-
-This app is compatible with any Node.js hosting:
-- Netlify
-- Railway
-- Render
-- Heroku
-- AWS Amplify
 
 ## File Structure
 
@@ -170,72 +128,102 @@ ai-character-creator/
 ├── src/
 │   ├── app/
 │   │   ├── api/
-│   │   │   └── generate/route.ts    # Image generation API
-│   │   ├── layout.tsx               # Root layout
-│   │   ├── page.tsx                 # Main page
-│   │   └── globals.css              # Global styles
+│   │   │   └── generate/route.ts    # Image generation API with model routing
+│   │   ├── layout.tsx
+│   │   ├── page.tsx                 # Tab layout (Create / Gallery)
+│   │   └── globals.css
 │   ├── components/
-│   │   ├── Header.tsx               # Header component
-│   │   ├── CharacterCustomizer.tsx  # Character creation form
-│   │   ├── ImagePreview.tsx         # Image display & controls
-│   │   └── ImageGallery.tsx         # Gallery view
+│   │   ├── Header.tsx               # CharForge brand header
+│   │   ├── CharacterCustomizer.tsx  # Character creation form + preset loader
+│   │   ├── ImagePreview.tsx         # Preview with download, copy, share, refine
+│   │   └── ImageGallery.tsx         # Gallery grid + detail panel + tagging
+│   ├── __tests__/
+│   │   ├── characterUtils.test.ts
+│   │   ├── store.test.ts
+│   │   ├── Header.test.tsx
+│   │   ├── CharacterCustomizer.test.tsx
+│   │   ├── ImagePreview.test.tsx
+│   │   └── ImageGallery.test.tsx
 │   └── lib/
-│       ├── store.ts                 # Zustand state management
-│       └── characterUtils.ts        # Utility functions
-├── public/                          # Static files
+│       ├── store.ts                 # Zustand store with localStorage persistence
+│       └── characterUtils.ts        # Prompt builder, download, share helpers
+├── vitest.config.ts
+├── vitest.setup.ts
 ├── package.json
 ├── tsconfig.json
 ├── tailwind.config.ts
-├── postcss.config.js
 └── next.config.js
 ```
 
-## API Routes
+## API Reference
 
-### POST `/api/generate`
-Generates an AI image from a prompt.
+### `POST /api/generate`
 
-**Request:**
+Generates an image from the given prompt and style.
+
+**Request body:**
 ```json
 {
-  "prompt": "A female elf mage in purple robes..."
+  "prompt": "a real Human female person, wearing Medieval warrior armor...",
+  "style": "Human realistic"
 }
 ```
 
-**Response:**
+**Success response:**
 ```json
 {
   "success": true,
   "image": "data:image/jpeg;base64,...",
-  "prompt": "A female elf mage..."
+  "prompt": "...",
+  "model": "strangerzonehf/Flux-Super-Realism-LoRA"
 }
 ```
 
+**Error response:**
+```json
+{ "error": "Model is currently loading. Please wait a moment and try again." }
+```
+
+## Troubleshooting
+
+### Cartoon-looking output with Human Realistic
+- This happens when the LoRA model is busy and the API falls back to FLUX.1-schnell — retry in a few seconds
+- Make sure you have not overridden `NEXT_PUBLIC_HF_MODEL` with a non-FLUX model
+
+### "Model is loading" / 503 error
+- The HF free tier auto-sleeps inactive models; wait ~30 seconds and retry
+- The app retries automatically with exponential backoff before returning an error
+
+### API key not working
+- Verify the token at <https://huggingface.co/settings/tokens>
+- The token must have at least **Read** scope
+- Restart the dev server after editing `.env.local`
+
+### Images not saving
+- Check browser localStorage quota (typically 5–10 MB)
+- Delete older images from the Gallery tab to free space
+
+## Deployment
+
+### Vercel (recommended)
+
+1. Push to GitHub
+2. Import the repo at <https://vercel.com>
+3. Add environment variable: `NEXT_PUBLIC_HF_API_KEY`
+4. Deploy
+
+```bash
+# Or via CLI:
+npx vercel
+```
+
+### Other Node.js platforms
+
+Compatible with Netlify, Railway, Render, Heroku, and AWS Amplify. Ensure the `NEXT_PUBLIC_HF_API_KEY` environment variable is set on the host.
+
 ## Browser Support
 
-- Chrome/Edge 90+
-- Firefox 88+
-- Safari 14+
-- Mobile browsers (iOS Safari, Chrome Mobile)
-
-## Performance Tips
-
-1. Use presets for faster creation
-2. Refine prompts quickly without regenerating
-3. Delete old images to free up storage
-4. Use tags to organize large galleries
-5. Consider upgrading Hugging Face API for faster access
-
-## Future Enhancements
-
-- [ ] User accounts & cloud storage
-- [ ] More character preset categories
-- [ ] Image upscaling options
-- [ ] Batch generation
-- [ ] Social sharing & gallery
-- [ ] Advanced prompt editing
-- [ ] Multiple model comparison
-- [ ] Real-time preview
+Chrome/Edge 90+, Firefox 88+, Safari 14+, iOS Safari, Chrome Mobile
 
 ## License
 
