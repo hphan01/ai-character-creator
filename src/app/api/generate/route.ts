@@ -3,17 +3,61 @@ import { NextRequest, NextResponse } from 'next/server'
 export const runtime = 'nodejs'
 export const maxDuration = 180  // 3 minutes to support FLUX models
 
+// Primary model for hyper-realistic human portraits
+const REALISM_MODEL = 'strangerzonehf/Flux-Super-Realism-LoRA'
+
 // List of reliable models to try as fallback
 const FALLBACK_MODELS = [
+  'black-forest-labs/FLUX.1-schnell',
   'stabilityai/stable-diffusion-xl-base-1.0',
   'stabilityai/stable-diffusion-2-1',
 ]
 
 // Model-specific timeout settings (in milliseconds)
 const MODEL_TIMEOUTS: Record<string, number> = {
+  'strangerzonehf/Flux-Super-Realism-LoRA': 120000,   // 2 minutes – larger LoRA model
   'black-forest-labs/FLUX.1-schnell': 60000,          // 1 minute
   'stabilityai/stable-diffusion-xl-base-1.0': 90000,  // 1.5 minutes
   'stabilityai/stable-diffusion-2-1': 90000,          // 1.5 minutes
+}
+
+/** Enhance prompt with photorealism boosters when using the realism model.
+ * The trigger word `fluxlora` MUST be present at the start of the prompt
+ * to activate the LoRA weights. Without it the model ignores the LoRA entirely.
+ */
+function buildRealismPrompt(prompt: string): string {
+  return `fluxlora, ${prompt}, hyperrealistic, photorealistic, ultra-detailed skin texture, \
+pore-level detail, natural subsurface scattering, professional portrait photography, \
+Sony A7R V, 85mm f/1.4 lens, soft cinematic lighting, shallow depth of field, \
+film grain, 8K UHD, RAW photo, award-winning photography`
+}
+
+/** Parameters injected into the HF inference API body for the realism model */
+const REALISM_PARAMS = {
+  negative_prompt:
+    'cartoon, anime, illustration, painting, drawing, art, sketch, 3d render, cgi, ' +
+    'ugly, deformed, disfigured, bad anatomy, blurry, low quality, watermark, text, ' +
+    'oversaturated, plastic skin, airbrushed, unnatural lighting',
+  num_inference_steps: 35,
+  guidance_scale: 7.0,
+}
+
+/** Pick the best primary model for the requested style */
+function selectPrimaryModel(style?: string): string {
+  if (style === 'Human realistic') return REALISM_MODEL
+  return process.env.NEXT_PUBLIC_HF_MODEL || 'black-forest-labs/FLUX.1-schnell'
+}
+
+/** For realism mode, only fall back to FLUX-based models — never SD1/SD2 */
+function buildModelQueue(primaryModel: string, style?: string): string[] {
+  if (style === 'Human realistic') {
+    // Keep fallbacks within the FLUX family so realism is preserved
+    return [
+      REALISM_MODEL,
+      'black-forest-labs/FLUX.1-schnell',
+    ]
+  }
+  return [primaryModel, ...FALLBACK_MODELS.filter(m => m !== primaryModel)]
 }
 
 function getTimeoutForModel(model: string): number {
@@ -25,7 +69,7 @@ function getTimeoutForModel(model: string): number {
   return 60000
 }
 
-async function generateImageWithRetry(prompt: string, apiKey: string, model: string, retries = 2): Promise<{ success: boolean; data?: ArrayBuffer; error?: string }> {
+async function generateImageWithRetry(prompt: string, apiKey: string, model: string, retries = 2, extraParams?: Record<string, unknown>): Promise<{ success: boolean; data?: ArrayBuffer; error?: string }> {
   const timeout = getTimeoutForModel(model)
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
@@ -39,7 +83,7 @@ async function generateImageWithRetry(prompt: string, apiKey: string, model: str
             'Content-Type': 'application/json'
           },
           method: 'POST',
-          body: JSON.stringify({ inputs: prompt }),
+          body: JSON.stringify({ inputs: prompt, parameters: extraParams }),
           signal: AbortSignal.timeout(timeout),
         }
       )
@@ -100,7 +144,7 @@ async function generateImageWithRetry(prompt: string, apiKey: string, model: str
 
 export async function POST(request: NextRequest) {
   try {
-    const { prompt } = await request.json()
+    const { prompt, style } = await request.json()
 
     if (!prompt) {
       return NextResponse.json(
@@ -117,17 +161,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Use FLUX.1-schnell as default - fast and free on HF inference
-    const primaryModel = process.env.NEXT_PUBLIC_HF_MODEL || 'black-forest-labs/FLUX.1-schnell'
-    const modelsToTry = [primaryModel, ...FALLBACK_MODELS.filter(m => m !== primaryModel)]
+    const primaryModel = selectPrimaryModel(style)
+    const modelsToTry = buildModelQueue(primaryModel, style)
+    const isRealism = style === 'Human realistic'
 
-    console.log(`Starting image generation for prompt: "${prompt.substring(0, 50)}..."`)
+    // Use an enhanced prompt for the realism model
+    const effectivePrompt = isRealism ? buildRealismPrompt(prompt) : prompt
+
+    console.log(`Starting image generation for prompt: "${effectivePrompt.substring(0, 100)}..."`)
+    console.log(`Style: ${style || 'default'} → primary model: ${primaryModel}`)
     console.log(`Models to try: ${modelsToTry.join(', ')}`)
 
     // Try each model
     for (const model of modelsToTry) {
       console.log(`\n--- Trying model: ${model} ---`)
-      const result = await generateImageWithRetry(prompt, apiKey, model, 2)
+      const promptForModel = model === REALISM_MODEL ? effectivePrompt : (isRealism ? effectivePrompt : prompt)
+      const params = model === REALISM_MODEL ? REALISM_PARAMS : undefined
+      const result = await generateImageWithRetry(promptForModel, apiKey, model, 2, params)
 
       if (result.success && result.data) {
         const base64 = Buffer.from(result.data).toString('base64')

@@ -61,6 +61,7 @@ export const characterOptions = {
     'Shaved sides',
   ],
   style: [
+    'Human realistic',
     'Realistic detailed portrait',
     'Fantasy art style',
     'Anime style',
@@ -103,6 +104,23 @@ export const characterOptions = {
 }
 
 export function generatePrompt(options: CharacterOptions): string {
+  const isHumanRealistic = options.style === 'Human realistic'
+
+  if (isHumanRealistic) {
+    // Prompt optimised for the Flux-Super-Realism-LoRA model.
+    // Keep the subject description clean \u2014 the trigger word and quality boosters
+    // are appended server-side by buildRealismPrompt().
+    const parts = [
+      `a real ${options.race} person`,
+      `wearing ${options.outfit}`,
+      `with ${options.hairstyle}`,
+      `${options.expression} expression`,
+      options.setting !== 'Plain background' ? `${options.setting} background` : 'neutral studio background',
+      options.additionalDetails || null,
+    ].filter(Boolean)
+    return parts.join(', ')
+  }
+
   const basePrompt = [
     options.race,
     options.outfit,

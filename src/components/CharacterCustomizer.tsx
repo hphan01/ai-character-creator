@@ -43,7 +43,7 @@ export default function CharacterCustomizer() {
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, style: options.style }),
       })
 
       const data = await response.json()
