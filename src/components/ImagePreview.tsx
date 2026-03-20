@@ -13,6 +13,13 @@ interface ImagePreviewProps {
 function ShareMenu({ prompt, image }: { prompt: string; image: string }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  const closeMenu = () => {
+    setOpen(false)
+    triggerRef.current?.focus()
+  }
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -22,11 +29,41 @@ function ShareMenu({ prompt, image }: { prompt: string; image: string }) {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  // Focus the first menu item when the menu opens
+  useEffect(() => {
+    if (open && menuRef.current) {
+      const firstItem = menuRef.current.querySelector<HTMLElement>('[role="menuitem"]')
+      firstItem?.focus()
+    }
+  }, [open])
+
+  const handleMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!menuRef.current) return
+    const items = Array.from(menuRef.current.querySelectorAll<HTMLElement>('[role="menuitem"]'))
+    const focused = document.activeElement as HTMLElement
+    const index = items.indexOf(focused)
+
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      closeMenu()
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      const next = items[(index + 1) % items.length]
+      next?.focus()
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      const prev = items[(index - 1 + items.length) % items.length]
+      prev?.focus()
+    } else if (e.key === 'Tab') {
+      closeMenu()
+    }
+  }
+
   const shareText = encodeURIComponent(`Check out this AI character I created! 🎨\n\n"${prompt.slice(0, 200)}"\n\n#AIArt #CharForge #AICharacter`)
 
   const handleTwitter = () => {
     window.open(`https://twitter.com/intent/tweet?text=${shareText}`, '_blank', 'noopener,noreferrer')
-    setOpen(false)
+    closeMenu()
   }
 
   const handleInstagram = () => {
@@ -34,7 +71,7 @@ function ShareMenu({ prompt, image }: { prompt: string; image: string }) {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
     downloadImage(image, `charforge-${timestamp}.png`)
     window.open('https://www.instagram.com/', '_blank', 'noopener,noreferrer')
-    setOpen(false)
+    closeMenu()
   }
 
   const handleTikTok = () => {
@@ -42,12 +79,13 @@ function ShareMenu({ prompt, image }: { prompt: string; image: string }) {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
     downloadImage(image, `charforge-${timestamp}.png`)
     window.open('https://www.tiktok.com/upload', '_blank', 'noopener,noreferrer')
-    setOpen(false)
+    closeMenu()
   }
 
   return (
     <div ref={ref} className="relative flex-1">
       <button
+        ref={triggerRef}
         onClick={() => setOpen(prev => !prev)}
         className="w-full bg-red-700 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center justify-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-red-500"
         aria-expanded={open}
@@ -60,7 +98,9 @@ function ShareMenu({ prompt, image }: { prompt: string; image: string }) {
 
       {open && (
         <div
+          ref={menuRef}
           role="menu"
+          onKeyDown={handleMenuKeyDown}
           className="absolute bottom-full mb-2 left-0 right-0 bg-neutral-900 border border-neutral-700 rounded-xl overflow-hidden shadow-xl shadow-black/60 z-50"
         >
           <button
