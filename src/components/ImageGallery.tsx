@@ -8,6 +8,8 @@ import { downloadImage } from '@/lib/characterUtils'
 function ShareMenu({ prompt, image }: { prompt: string; image: string }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -17,28 +19,74 @@ function ShareMenu({ prompt, image }: { prompt: string; image: string }) {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  // Focus the first menu item when the menu opens
+  useEffect(() => {
+    if (open && menuRef.current) {
+      const firstItem = menuRef.current.querySelector<HTMLElement>('[role="menuitem"]')
+      firstItem?.focus()
+    }
+  }, [open])
+
+  const closeMenu = () => {
+    setOpen(false)
+    triggerRef.current?.focus()
+  }
+
+  const handleMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!menuRef.current) return
+    const items = Array.from(menuRef.current.querySelectorAll<HTMLElement>('[role="menuitem"]'))
+    const currentIndex = items.indexOf(document.activeElement as HTMLElement)
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault()
+        items[(currentIndex + 1) % items.length]?.focus()
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        items[(currentIndex - 1 + items.length) % items.length]?.focus()
+        break
+      case 'Home':
+        e.preventDefault()
+        items[0]?.focus()
+        break
+      case 'End':
+        e.preventDefault()
+        items[items.length - 1]?.focus()
+        break
+      case 'Escape':
+        e.preventDefault()
+        closeMenu()
+        break
+      case 'Tab':
+        closeMenu()
+        break
+    }
+  }
+
   const shareText = encodeURIComponent(`Check out this AI character I created! 🎨\n\n"${prompt.slice(0, 200)}"\n\n#AIArt #CharForge #AICharacter`)
 
   const handleTwitter = () => {
     window.open(`https://twitter.com/intent/tweet?text=${shareText}`, '_blank', 'noopener,noreferrer')
-    setOpen(false)
+    closeMenu()
   }
 
   const handleInstagram = () => {
     downloadImage(image, `charforge-${Date.now()}.png`)
     window.open('https://www.instagram.com/', '_blank', 'noopener,noreferrer')
-    setOpen(false)
+    closeMenu()
   }
 
   const handleTikTok = () => {
     downloadImage(image, `charforge-${Date.now()}.png`)
     window.open('https://www.tiktok.com/upload', '_blank', 'noopener,noreferrer')
-    setOpen(false)
+    closeMenu()
   }
 
   return (
     <div ref={ref} className="relative">
       <button
+        ref={triggerRef}
         onClick={() => setOpen(prev => !prev)}
         className="w-full bg-red-700 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center justify-center gap-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
         aria-expanded={open}
@@ -51,10 +99,12 @@ function ShareMenu({ prompt, image }: { prompt: string; image: string }) {
 
       {open && (
         <div
+          ref={menuRef}
           role="menu"
+          onKeyDown={handleMenuKeyDown}
           className="absolute bottom-full mb-2 left-0 right-0 bg-neutral-900 border border-neutral-700 rounded-xl overflow-hidden shadow-xl shadow-black/60 z-50"
         >
-          <button role="menuitem" onClick={handleTwitter}
+          <button role="menuitem" tabIndex={-1} onClick={handleTwitter}
             className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-white hover:bg-neutral-800 transition-colors focus:outline-none focus:bg-neutral-800"
           >
             <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
@@ -63,7 +113,7 @@ function ShareMenu({ prompt, image }: { prompt: string; image: string }) {
             Share on X (Twitter)
           </button>
           <div className="border-t border-neutral-800" />
-          <button role="menuitem" onClick={handleInstagram}
+          <button role="menuitem" tabIndex={-1} onClick={handleInstagram}
             className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-white hover:bg-neutral-800 transition-colors focus:outline-none focus:bg-neutral-800"
           >
             <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
@@ -73,7 +123,7 @@ function ShareMenu({ prompt, image }: { prompt: string; image: string }) {
             <span className="ml-auto text-xs text-gray-500 font-normal">saves image</span>
           </button>
           <div className="border-t border-neutral-800" />
-          <button role="menuitem" onClick={handleTikTok}
+          <button role="menuitem" tabIndex={-1} onClick={handleTikTok}
             className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-white hover:bg-neutral-800 transition-colors focus:outline-none focus:bg-neutral-800"
           >
             <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
