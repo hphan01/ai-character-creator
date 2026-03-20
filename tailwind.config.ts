@@ -9,11 +9,11 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: '#5a5a5a',
-        secondary: '#4a4a4a',
+        primary: '#b91c1c',
+        secondary: '#991b1b',
       },
       backgroundImage: {
-        gradient: 'linear-gradient(135deg, #5a5a5a 0%, #3a3a3a 100%)',
+        gradient: 'linear-gradient(135deg, #b91c1c 0%, #991b1b 100%)',
       },
     },
   },

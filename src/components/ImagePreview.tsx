@@ -45,8 +45,8 @@ export default function ImagePreview({
 
       <div className="glass rounded-xl p-4 space-y-4">
         <div>
-          <p className="text-sm text-gray-400 mb-2">Prompt:</p>
-          <p className="text-sm bg-gray-800/50 rounded-lg p-3 text-gray-300 border border-gray-700 break-words">
+          <p className="text-sm text-gray-200 mb-2">Prompt:</p>
+          <p className="text-sm bg-black/50 rounded-lg p-3 text-gray-200 border border-neutral-700 break-words">
             {prompt}
           </p>
         </div>
@@ -54,27 +54,27 @@ export default function ImagePreview({
         <div className="flex gap-2">
           <button
             onClick={handleCopyPrompt}
-            className="flex-1 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
+            className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-red-500"
           >
             {copied ? '✓ Copied' : 'Copy Prompt'}
           </button>
           <button
             onClick={handleDownload}
-            className="flex-1 bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
+            className="flex-1 bg-red-700 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-red-500"
           >
             <Download className="w-4 h-4" />
             Download
           </button>
           <button
             onClick={handleShare}
-            className="flex-1 bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
+            className="flex-1 bg-red-700 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-red-500"
           >
             <Share2 className="w-4 h-4" />
             Share
           </button>
           <button
             onClick={onRegenerate}
-            className="flex-1 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
+            className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-red-500"
           >
             <RotateCcw className="w-4 h-4" />
             Refine

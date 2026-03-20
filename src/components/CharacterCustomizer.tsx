@@ -130,7 +130,7 @@ export default function CharacterCustomizer() {
               <button
                 key={preset}
                 onClick={() => loadPreset(preset)}
-                className="bg-gray-600/50 hover:bg-gray-500 px-4 py-2 rounded-lg capitalize transition-all"
+                className="bg-red-700 hover:bg-red-600 text-white px-4 py-2 rounded-lg capitalize transition-all focus:outline-none focus:ring-2 focus:ring-red-500"
               >
                 {preset}
               </button>
@@ -140,19 +140,19 @@ export default function CharacterCustomizer() {
 
         {/* Customization Options */}
         <div className="glass rounded-xl p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-          <h2 className="text-2xl font-bold sticky top-0 bg-gray-800/80 py-2 -mx-6 px-6">
+          <h2 className="text-2xl font-bold sticky top-0 bg-neutral-900 py-2 -mx-6 px-6">
             Customize Character
           </h2>
 
           {Object.entries(characterOptions).map(([key, values]) => (
             <div key={key}>
-              <label className="block text-sm font-semibold text-gray-300 mb-2 capitalize">
+              <label className="block text-sm font-semibold text-gray-200 mb-2 capitalize">
                 {key.replace(/([A-Z])/g, ' $1').trim()}
               </label>
               <select
                 value={options[key as keyof CharacterOptions] || ''}
                 onChange={(e) => updateOption(key as keyof CharacterOptions, e.target.value)}
-                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:border-gray-500 focus:outline-none"
+                className="w-full bg-neutral-950 border border-neutral-700 rounded-lg px-3 py-2 text-white focus:border-red-600 focus:ring-1 focus:ring-red-600 focus:outline-none"
               >
                 {values.map(value => (
                   <option key={value} value={value}>
@@ -165,14 +165,14 @@ export default function CharacterCustomizer() {
 
           {/* Additional Details */}
           <div>
-            <label className="block text-sm font-semibold text-gray-300 mb-2">
+            <label className="block text-sm font-semibold text-gray-200 mb-2">
               Additional Details
             </label>
             <textarea
               value={options.additionalDetails || ''}
               onChange={(e) => updateOption('additionalDetails', e.target.value)}
               placeholder="Add any extra details (e.g., 'holding a glowing sword', 'with dragon wings')"
-              className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:border-gray-500 focus:outline-none resize-none"
+              className="w-full bg-neutral-950 border border-neutral-700 rounded-lg px-3 py-2 text-white focus:border-red-600 focus:ring-1 focus:ring-red-600 focus:outline-none resize-none"
               rows={3}
             />
           </div>
@@ -182,7 +182,7 @@ export default function CharacterCustomizer() {
         <button
           onClick={handleGenerateImage}
           disabled={loading}
-          className="w-full bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 text-lg"
+          className="w-full bg-red-700 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-4 rounded-xl font-semibold text-white transition-all flex items-center justify-center gap-2 text-lg focus:outline-none focus:ring-2 focus:ring-red-500"
         >
           {loading ? (
             <>
@@ -216,7 +216,7 @@ export default function CharacterCustomizer() {
         {!generatedImage && !loading && (
           <div className="glass rounded-xl p-8 flex items-center justify-center min-h-[500px]">
             <div className="text-center">
-              <p className="text-gray-400 text-lg">
+              <p className="text-gray-300 text-lg">
                 Configure your character and click &quot;Generate Character&quot; to create an AI image
               </p>
             </div>
@@ -225,9 +225,9 @@ export default function CharacterCustomizer() {
         {loading && (
           <div className="glass rounded-xl p-8 flex items-center justify-center min-h-[500px]">
             <div className="text-center">
-              <Loader className="animate-spin w-16 h-16 mx-auto mb-4 text-gray-400" />
-              <p className="text-gray-300">Creating your character...</p>
-              <p className="text-gray-500 text-sm mt-2">(This may take 30-60 seconds)</p>
+              <Loader className="animate-spin w-16 h-16 mx-auto mb-4 text-red-500" />
+              <p className="text-gray-200">Creating your character...</p>
+              <p className="text-gray-400 text-sm mt-2">(This may take 30-60 seconds)</p>
             </div>
           </div>
         )}
