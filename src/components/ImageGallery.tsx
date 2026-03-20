@@ -17,11 +17,32 @@ function ShareMenu({ prompt, image }: { prompt: string; image: string }) {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const shareText = encodeURIComponent(`Check out this AI character I created! 🎨\n\n"${prompt.slice(0, 200)}"\n\n#AIArt #CharForge #AICharacter`)
+  const tweetText = `Check out this AI character I created! 🎨\n\n"${prompt.slice(0, 200)}"\n\n#AIArt #CharForge #AICharacter`
+  const shareText = encodeURIComponent(tweetText)
 
-  const handleTwitter = () => {
-    window.open(`https://twitter.com/intent/tweet?text=${shareText}`, '_blank', 'noopener,noreferrer')
+  const handleTwitter = async () => {
     setOpen(false)
+    const filename = `charforge-${Date.now()}.png`
+
+    // Try Web Share API with image file first (works on mobile/supported browsers)
+    if (typeof navigator !== 'undefined' && navigator.canShare) {
+      try {
+        const res = await fetch(image)
+        if (!res.ok) throw new Error(`Failed to fetch image: ${res.status}`)
+        const blob = await res.blob()
+        const file = new File([blob], filename, { type: 'image/png' })
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: 'AI Character', text: tweetText })
+          return
+        }
+      } catch (err) {
+        console.warn('Web Share API failed, falling back to download + tweet:', err)
+      }
+    }
+
+    // Fallback: download the image then open Twitter intent so users can attach it manually
+    downloadImage(image, filename)
+    window.open(`https://twitter.com/intent/tweet?text=${shareText}`, '_blank', 'noopener,noreferrer')
   }
 
   const handleInstagram = () => {
@@ -61,6 +82,7 @@ function ShareMenu({ prompt, image }: { prompt: string; image: string }) {
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L2.004 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
             </svg>
             Share on X (Twitter)
+            <span className="ml-auto text-xs text-gray-500 font-normal">shares image</span>
           </button>
           <div className="border-t border-neutral-800" />
           <button role="menuitem" onClick={handleInstagram}
