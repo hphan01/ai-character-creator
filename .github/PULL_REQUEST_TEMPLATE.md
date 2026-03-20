@@ -1,4 +1,4 @@
-## [bug/feature] Short title description
+## Title [bug/feature] Short title description
 
 <!-- Replace "bug/feature" with the appropriate type and fill in a short title -->
 
