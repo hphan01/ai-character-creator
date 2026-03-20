@@ -1,7 +1,7 @@
 'use client'
 
 import { Download, Share2, RotateCcw, ChevronDown } from 'lucide-react'
-import { downloadImage } from '@/lib/characterUtils'
+import { downloadImage, shareImage } from '@/lib/characterUtils'
 import { useState, useRef, useEffect } from 'react'
 
 interface ImagePreviewProps {
@@ -42,6 +42,11 @@ function ShareMenu({ prompt, image }: { prompt: string; image: string }) {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
     downloadImage(image, `charforge-${timestamp}.png`)
     window.open('https://www.tiktok.com/upload', '_blank', 'noopener,noreferrer')
+    setOpen(false)
+  }
+
+  const handleMore = () => {
+    shareImage(image, prompt)
     setOpen(false)
   }
 
@@ -103,6 +108,18 @@ function ShareMenu({ prompt, image }: { prompt: string; image: string }) {
             </svg>
             Share on TikTok
             <span className="ml-auto text-xs text-gray-500 font-normal">saves image</span>
+          </button>
+
+          <div className="border-t border-neutral-800" />
+
+          <button
+            role="menuitem"
+            onClick={handleMore}
+            className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-white hover:bg-neutral-800 transition-colors focus:outline-none focus:bg-neutral-800"
+          >
+            <Share2 className="w-4 h-4 flex-shrink-0" />
+            More…
+            <span className="ml-auto text-xs text-gray-500 font-normal">native share</span>
           </button>
         </div>
       )}
