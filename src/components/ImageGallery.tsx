@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useCharacterStore, GeneratedImage } from '@/lib/store'
 import { Trash2, Download, Share2, Tag } from 'lucide-react'
 import { downloadImage, shareImage } from '@/lib/characterUtils'
@@ -35,7 +35,7 @@ export default function ImageGallery() {
       <div className="glass rounded-xl p-12 text-center">
         <p className="text-gray-400 text-lg mb-4">No generated characters yet!</p>
         <p className="text-gray-500">
-          Go to "Create Character" tab to generate your first AI character image.
+          Go to &quot;Create Character&quot; tab to generate your first AI character image.
         </p>
       </div>
     )
@@ -70,6 +70,7 @@ export default function ImageGallery() {
                 selectedImage?.id === image.id ? 'ring-2 ring-gray-500' : ''
               }`}
             >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={image.image}
                 alt={image.prompt}
@@ -92,6 +93,7 @@ export default function ImageGallery() {
           <h3 className="text-xl font-bold">Details</h3>
 
           {/* Preview */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={selectedImage.image}
             alt={selectedImage.prompt}

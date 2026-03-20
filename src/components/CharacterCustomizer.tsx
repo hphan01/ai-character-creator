@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Loader, Zap } from 'lucide-react'
 import {
   CharacterOptions,
@@ -217,7 +217,7 @@ export default function CharacterCustomizer() {
           <div className="glass rounded-xl p-8 flex items-center justify-center min-h-[500px]">
             <div className="text-center">
               <p className="text-gray-400 text-lg">
-                Configure your character and click "Generate Character" to create an AI image
+                Configure your character and click &quot;Generate Character&quot; to create an AI image
               </p>
             </div>
           </div>

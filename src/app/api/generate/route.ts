@@ -1,7 +1,102 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
-export const maxDuration = 120
+export const maxDuration = 180  // 3 minutes to support FLUX models
+
+// List of reliable models to try as fallback
+const FALLBACK_MODELS = [
+  'stabilityai/stable-diffusion-xl-base-1.0',
+  'stabilityai/stable-diffusion-2-1',
+]
+
+// Model-specific timeout settings (in milliseconds)
+const MODEL_TIMEOUTS: Record<string, number> = {
+  'black-forest-labs/FLUX.1-schnell': 60000,          // 1 minute
+  'stabilityai/stable-diffusion-xl-base-1.0': 90000,  // 1.5 minutes
+  'stabilityai/stable-diffusion-2-1': 90000,          // 1.5 minutes
+}
+
+function getTimeoutForModel(model: string): number {
+  // Check for exact match first
+  if (MODEL_TIMEOUTS[model]) {
+    return MODEL_TIMEOUTS[model]
+  }
+  // Default timeout
+  return 60000
+}
+
+async function generateImageWithRetry(prompt: string, apiKey: string, model: string, retries = 2): Promise<{ success: boolean; data?: ArrayBuffer; error?: string }> {
+  const timeout = getTimeoutForModel(model)
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      console.log(`[Attempt ${attempt}/${retries}] Generating image with model: ${model} (timeout: ${timeout}ms)`)
+      
+      const response = await fetch(
+        `https://router.huggingface.co/hf-inference/models/${model}`,
+        {
+          headers: { 
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          method: 'POST',
+          body: JSON.stringify({ inputs: prompt }),
+          signal: AbortSignal.timeout(timeout),
+        }
+      )
+
+      const contentType = response.headers.get('content-type') || ''
+      console.log(`[Attempt ${attempt}] Response status: ${response.status}, Content-Type: ${contentType}`)
+
+      // Handle loading/queued responses
+      if (response.status === 503) {
+        const text = await response.text()
+        console.warn(`[Attempt ${attempt}] Model loading or too busy: ${text.substring(0, 100)}`)
+        
+        if (attempt < retries) {
+          // Wait before retrying
+          const waitTime = Math.min(5000 * attempt, 30000) // Exponential backoff
+          console.log(`Waiting ${waitTime}ms before retry...`)
+          await new Promise(r => setTimeout(r, waitTime))
+          continue
+        }
+        return { success: false, error: 'Model is currently loading. Please wait a moment and try again.' }
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error(`[Attempt ${attempt}] Error: ${errorText.substring(0, 200)}`)
+        return { success: false, error: `API Error: ${errorText.substring(0, 100)}` }
+      }
+
+      // Try to get image data
+      const buffer = await response.arrayBuffer()
+      
+      if (buffer.byteLength === 0) {
+        console.warn(`[Attempt ${attempt}] Received empty buffer`)
+        if (attempt < retries) {
+          await new Promise(r => setTimeout(r, 2000))
+          continue
+        }
+        return { success: false, error: 'Received empty response. Please try again.' }
+      }
+
+      console.log(`[Attempt ${attempt}] Successfully received image data: ${buffer.byteLength} bytes`)
+      return { success: true, data: buffer }
+
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err)
+      console.error(`[Attempt ${attempt}] Exception: ${errorMsg}`)
+      
+      if (attempt < retries) {
+        await new Promise(r => setTimeout(r, 2000))
+        continue
+      }
+      return { success: false, error: errorMsg }
+    }
+  }
+  
+  return { success: false, error: 'Failed after all retries' }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,95 +117,39 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const model = process.env.NEXT_PUBLIC_HF_MODEL || 'runwayml/stable-diffusion-v1-5'
+    // Use FLUX.1-schnell as default - fast and free on HF inference
+    const primaryModel = process.env.NEXT_PUBLIC_HF_MODEL || 'black-forest-labs/FLUX.1-schnell'
+    const modelsToTry = [primaryModel, ...FALLBACK_MODELS.filter(m => m !== primaryModel)]
 
-    console.log(`Generating image with prompt: "${prompt.substring(0, 50)}..." using model: ${model}`)
+    console.log(`Starting image generation for prompt: "${prompt.substring(0, 50)}..."`)
+    console.log(`Models to try: ${modelsToTry.join(', ')}`)
 
-    const response = await fetch(
-      `https://router.huggingface.co/models/${model}`,
-      {
-        headers: { 
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        method: 'POST',
-        body: JSON.stringify({ inputs: prompt }),
+    // Try each model
+    for (const model of modelsToTry) {
+      console.log(`\n--- Trying model: ${model} ---`)
+      const result = await generateImageWithRetry(prompt, apiKey, model, 2)
+
+      if (result.success && result.data) {
+        const base64 = Buffer.from(result.data).toString('base64')
+        const imageData = `data:image/jpeg;base64,${base64}`
+
+        return NextResponse.json({
+          success: true,
+          image: imageData,
+          prompt,
+          model,
+        })
       }
+
+      console.log(`Model ${model} failed: ${result.error}`)
+      // Continue to next model
+    }
+
+    return NextResponse.json(
+      { error: 'All models failed. The image generation service may be overloaded. Please try again in a few minutes.' },
+      { status: 503 }
     )
 
-    console.log('HF Response Status:', response.status)
-    const contentType = response.headers.get('content-type')
-    console.log('Response Content-Type:', contentType)
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('HF API Error:', errorText, 'Status:', response.status)
-      
-      if (response.status === 410) {
-        return NextResponse.json(
-          { error: 'The model is no longer available. Please update your .env.local file with a supported model.' },
-          { status: 503 }
-        )
-      }
-      
-      if (response.status === 429) {
-        return NextResponse.json(
-          { error: 'Rate limited. Please wait a moment and try again.' },
-          { status: 429 }
-        )
-      }
-
-      if (response.status === 503) {
-        return NextResponse.json(
-          { error: 'Model is loading. This can take 1-2 minutes on first run. Please try again in a moment.' },
-          { status: 503 }
-        )
-      }
-      
-      return NextResponse.json(
-        { error: `Failed to generate image: ${errorText || 'Unknown error'}` },
-        { status: 503 }
-      )
-    }
-
-    // Check if response is JSON (status/error message) or binary (image)
-    if (contentType && contentType.includes('application/json')) {
-      const jsonResponse = await response.json()
-      console.log('Received JSON response:', jsonResponse)
-      
-      // Model might be queued
-      if (jsonResponse.estimated_time) {
-        return NextResponse.json(
-          { error: `Model is loading. Please wait ${Math.ceil(jsonResponse.estimated_time)} seconds and try again.` },
-          { status: 503 }
-        )
-      }
-      
-      return NextResponse.json(
-        { error: 'Unexpected response from API. Please try again.' },
-        { status: 503 }
-      )
-    }
-
-    // Handle binary image response
-    const buffer = await response.arrayBuffer()
-    
-    if (buffer.byteLength === 0) {
-      console.error('Received empty response buffer')
-      return NextResponse.json(
-        { error: 'Received empty image data. Please try again.' },
-        { status: 503 }
-      )
-    }
-
-    const base64 = Buffer.from(buffer).toString('base64')
-    const imageData = `data:image/jpeg;base64,${base64}`
-
-    return NextResponse.json({
-      success: true,
-      image: imageData,
-      prompt,
-    })
   } catch (error) {
     console.error('Image generation error:', error)
     return NextResponse.json(

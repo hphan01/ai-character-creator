@@ -26,6 +26,10 @@ yarn-error.log*
 .env.local
 !.env.local.example
 
+# Local test scripts (may contain sensitive keys)
+test-api.js
+test-api.ts
+
 # IDE
 .vscode
 .idea

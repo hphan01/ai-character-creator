@@ -2,7 +2,6 @@
 
 import { Download, Share2, RotateCcw } from 'lucide-react'
 import { downloadImage, shareImage } from '@/lib/characterUtils'
-import Image from 'next/image'
 import { useState } from 'react'
 
 interface ImagePreviewProps {
@@ -36,6 +35,7 @@ export default function ImagePreview({
   return (
     <div className="space-y-4">
       <div className="glass rounded-xl overflow-hidden">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={image}
           alt="Generated character"
