@@ -1,6 +1,6 @@
 # CharForge AI
 
-A web application for generating AI character images with deep customisation and a **human-realistic portrait mode** powered by the Flux Super Realism LoRA. Built with Next.js 14, React 18, and Hugging Face inference.
+A web application for generating AI character images with deep customisation and a **human-realistic portrait mode** powered by Hugging Face Inference Providers. Built with Next.js 14, React 18, and the Hugging Face JavaScript SDK.
 
 ![Next.js](https://img.shields.io/badge/Next.js-14-black) ![React](https://img.shields.io/badge/React-18-blue) ![Vitest](https://img.shields.io/badge/tested%20with-Vitest-6E9F18) ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -15,13 +15,14 @@ A web application for generating AI character images with deep customisation and
 - Warrior, Mage, Rogue, Paladin, Fairy — one-click preset loading
 
 📸 **Human Realistic Mode**
-- Powered by [`strangerzonehf/Flux-Super-Realism-LoRA`](https://huggingface.co/strangerzonehf/Flux-Super-Realism-LoRA) — a FLUX-based LoRA fine-tuned for hyper-realistic human portraits
-- Automatically activates the LoRA trigger word, injects a negative prompt, and uses optimised inference parameters (35 steps, guidance 7.0) to eliminate cartoonish output
-- Falls back to `FLUX.1-schnell` (within the FLUX family) if the realism model is unavailable instead of dropping to older SD models
+- Uses `black-forest-labs/FLUX.1-Krea-dev` through Hugging Face Inference Providers
+- Adds portrait-focused prompt enhancements, a negative prompt, and optimised inference parameters (35 steps, guidance 7.0)
+- Falls back to `Qwen/Qwen-Image` and `ByteDance/Hyper-SD` if the primary model is unavailable
 
 🤖 **Smart Model Routing**
-- Style-aware model selection: Human Realistic → Flux-Super-Realism-LoRA; all other styles → FLUX.1-schnell (or your `NEXT_PUBLIC_HF_MODEL` override)
-- Per-model timeout tuning and exponential-backoff retry logic
+- Style-aware model selection with an optional `NEXT_PUBLIC_HF_MODEL` override for non-realism styles
+- Provider-aware routing through the official `@huggingface/inference` SDK
+- Retries transient provider failures before trying the next model
 
 💾 **Gallery & History**
 - Auto-saves every generated image to browser localStorage
@@ -35,7 +36,7 @@ A web application for generating AI character images with deep customisation and
 - Copy prompt to clipboard
 
 🧪 **Full Test Coverage**
-- 60 tests across all components and utilities using **Vitest** + React Testing Library
+- 69 tests across all components and utilities using **Vitest** + React Testing Library
 - Run with `npm test` or get coverage with `npm run test:coverage`
 
 ## Tech Stack
@@ -45,8 +46,9 @@ A web application for generating AI character images with deep customisation and
 | Framework | Next.js 14 (App Router) |
 | UI | React 18, TypeScript, Tailwind CSS |
 | State | Zustand (localStorage-persisted) |
-| AI — Realism | `strangerzonehf/Flux-Super-Realism-LoRA` |
-| AI — Default | `black-forest-labs/FLUX.1-schnell` |
+| AI — Primary | `black-forest-labs/FLUX.1-Krea-dev` |
+| AI — Fallbacks | `Qwen/Qwen-Image`, `ByteDance/Hyper-SD` |
+| AI — Client | `@huggingface/inference` |
 | Icons | Lucide React |
 | Testing | Vitest, React Testing Library, @testing-library/jest-dom |
 
@@ -65,7 +67,7 @@ npm install
 ### 2. Get your Hugging Face API key
 
 1. Go to <https://huggingface.co/settings/tokens>
-2. Create a token with **Read** access
+2. Create a token with **Inference Providers** permission
 3. Copy the token
 
 ### 3. Configure environment variables
@@ -75,7 +77,7 @@ Create a `.env.local` file in the project root:
 NEXT_PUBLIC_HF_API_KEY=your_hugging_face_api_key_here
 
 # Optional: override the default model for non-realism styles
-# NEXT_PUBLIC_HF_MODEL=black-forest-labs/FLUX.1-schnell
+# NEXT_PUBLIC_HF_MODEL=black-forest-labs/FLUX.1-Krea-dev
 ```
 
 ### 4. Run the dev server
@@ -102,10 +104,10 @@ Open <http://localhost:3000> in your browser.
 
 | Style selected | Model used | Notes |
 |---|---|---|
-| Human Realistic | `strangerzonehf/Flux-Super-Realism-LoRA` | LoRA on FLUX; trigger word `fluxlora` applied automatically |
-| All other styles | `black-forest-labs/FLUX.1-schnell` | Fast FLUX base model |
-| Fallback (any) | `black-forest-labs/FLUX.1-schnell` | Used when primary unavailable |
-| Fallback (non-realism) | `stabilityai/stable-diffusion-xl-base-1.0` | Second fallback for non-realism styles |
+| Human Realistic | `black-forest-labs/FLUX.1-Krea-dev` | Portrait-enhanced prompt and negative prompt |
+| All other styles | `black-forest-labs/FLUX.1-Krea-dev` | Can be changed with `NEXT_PUBLIC_HF_MODEL` |
+| Fallback 1 | `Qwen/Qwen-Image` | Tried when the primary provider call fails |
+| Fallback 2 | `ByteDance/Hyper-SD` | Final configured fallback |
 
 To always use a specific model for non-realism styles, set `NEXT_PUBLIC_HF_MODEL` in `.env.local`.
 
@@ -175,7 +177,7 @@ Generates an image from the given prompt and style.
   "success": true,
   "image": "data:image/jpeg;base64,...",
   "prompt": "...",
-  "model": "strangerzonehf/Flux-Super-Realism-LoRA"
+  "model": "black-forest-labs/FLUX.1-Krea-dev"
 }
 ```
 
@@ -187,16 +189,17 @@ Generates an image from the given prompt and style.
 ## Troubleshooting
 
 ### Cartoon-looking output with Human Realistic
-- This happens when the LoRA model is busy and the API falls back to FLUX.1-schnell — retry in a few seconds
-- Make sure you have not overridden `NEXT_PUBLIC_HF_MODEL` with a non-FLUX model
+- The primary model receives portrait-focused prompt enhancements, but output can vary by provider
+- Make sure `NEXT_PUBLIC_HF_MODEL` is set to a text-to-image model available through Hugging Face Inference Providers
 
 ### "Model is loading" / 503 error
-- The HF free tier auto-sleeps inactive models; wait ~30 seconds and retry
-- The app retries automatically with exponential backoff before returning an error
+- The app uses the official provider-aware SDK, which routes around unavailable providers when possible
+- Confirm your token has **Inference Providers** permission and that the selected model is currently available
+- Restart the dev server after changing `.env.local`
 
 ### API key not working
 - Verify the token at <https://huggingface.co/settings/tokens>
-- The token must have at least **Read** scope
+- The token must have **Inference Providers** permission
 - Restart the dev server after editing `.env.local`
 
 ### Images not saving
