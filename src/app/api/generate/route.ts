@@ -1,32 +1,28 @@
+import { InferenceClient } from '@huggingface/inference'
 import { NextRequest, NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
 export const maxDuration = 180  // 3 minutes to support FLUX models
 
-// Primary model for hyper-realistic human portraits
-const REALISM_MODEL = 'strangerzonehf/Flux-Super-Realism-LoRA'
+// Current text-to-image model routed automatically to an available provider
+const REALISM_MODEL = 'black-forest-labs/FLUX.1-Krea-dev'
 
 // List of reliable models to try as fallback
 const FALLBACK_MODELS = [
-  'black-forest-labs/FLUX.1-schnell',
-  'stabilityai/stable-diffusion-xl-base-1.0',
-  'stabilityai/stable-diffusion-2-1',
+  'Qwen/Qwen-Image',
+  'ByteDance/Hyper-SD',
 ]
 
 // Model-specific timeout settings (in milliseconds)
 const MODEL_TIMEOUTS: Record<string, number> = {
-  'strangerzonehf/Flux-Super-Realism-LoRA': 120000,   // 2 minutes – larger LoRA model
-  'black-forest-labs/FLUX.1-schnell': 60000,          // 1 minute
-  'stabilityai/stable-diffusion-xl-base-1.0': 90000,  // 1.5 minutes
-  'stabilityai/stable-diffusion-2-1': 90000,          // 1.5 minutes
+  'black-forest-labs/FLUX.1-Krea-dev': 120000,
+  'Qwen/Qwen-Image': 120000,
+  'ByteDance/Hyper-SD': 90000,
 }
 
-/** Enhance prompt with photorealism boosters when using the realism model.
- * The trigger word `fluxlora` MUST be present at the start of the prompt
- * to activate the LoRA weights. Without it the model ignores the LoRA entirely.
- */
+/** Enhance prompt with photorealism boosters when using the realism model. */
 function buildRealismPrompt(prompt: string): string {
-  return `fluxlora, ${prompt}, hyperrealistic, photorealistic, ultra-detailed skin texture, \
+  return `${prompt}, hyperrealistic, photorealistic, ultra-detailed skin texture, \
 pore-level detail, natural subsurface scattering, professional portrait photography, \
 Sony A7R V, 85mm f/1.4 lens, soft cinematic lighting, shallow depth of field, \
 film grain, 8K UHD, RAW photo, award-winning photography`
@@ -45,16 +41,15 @@ const REALISM_PARAMS = {
 /** Pick the best primary model for the requested style */
 function selectPrimaryModel(style?: string): string {
   if (style === 'Human realistic') return REALISM_MODEL
-  return process.env.NEXT_PUBLIC_HF_MODEL || 'black-forest-labs/FLUX.1-schnell'
+  return process.env.NEXT_PUBLIC_HF_MODEL || REALISM_MODEL
 }
 
-/** For realism mode, only fall back to FLUX-based models — never SD1/SD2 */
+/** Keep realism mode on image-generation models supported by the router. */
 function buildModelQueue(primaryModel: string, style?: string): string[] {
   if (style === 'Human realistic') {
-    // Keep fallbacks within the FLUX family so realism is preserved
     return [
       REALISM_MODEL,
-      'black-forest-labs/FLUX.1-schnell',
+      ...FALLBACK_MODELS.filter(model => model !== REALISM_MODEL),
     ]
   }
   return [primaryModel, ...FALLBACK_MODELS.filter(m => m !== primaryModel)]
@@ -71,49 +66,17 @@ function getTimeoutForModel(model: string): number {
 
 async function generateImageWithRetry(prompt: string, apiKey: string, model: string, retries = 2, extraParams?: Record<string, unknown>): Promise<{ success: boolean; data?: ArrayBuffer; error?: string }> {
   const timeout = getTimeoutForModel(model)
+  const client = new InferenceClient(apiKey)
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       console.log(`[Attempt ${attempt}/${retries}] Generating image with model: ${model} (timeout: ${timeout}ms)`)
-      
-      const response = await fetch(
-        `https://router.huggingface.co/hf-inference/models/${model}`,
-        {
-          headers: { 
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-          },
-          method: 'POST',
-          body: JSON.stringify({ inputs: prompt, parameters: extraParams }),
-          signal: AbortSignal.timeout(timeout),
-        }
-      )
-
-      const contentType = response.headers.get('content-type') || ''
-      console.log(`[Attempt ${attempt}] Response status: ${response.status}, Content-Type: ${contentType}`)
-
-      // Handle loading/queued responses
-      if (response.status === 503) {
-        const text = await response.text()
-        console.warn(`[Attempt ${attempt}] Model loading or too busy: ${text.substring(0, 100)}`)
-        
-        if (attempt < retries) {
-          // Wait before retrying
-          const waitTime = Math.min(5000 * attempt, 30000) // Exponential backoff
-          console.log(`Waiting ${waitTime}ms before retry...`)
-          await new Promise(r => setTimeout(r, waitTime))
-          continue
-        }
-        return { success: false, error: 'Model is currently loading. Please wait a moment and try again.' }
-      }
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error(`[Attempt ${attempt}] Error: ${errorText.substring(0, 200)}`)
-        return { success: false, error: `API Error: ${errorText.substring(0, 100)}` }
-      }
-
-      // Try to get image data
-      const buffer = await response.arrayBuffer()
+      const image = await client.textToImage({
+        model,
+        inputs: prompt,
+        parameters: extraParams,
+        provider: 'auto',
+      }, { outputType: 'blob' })
+      const buffer = await image.arrayBuffer()
       
       if (buffer.byteLength === 0) {
         console.warn(`[Attempt ${attempt}] Received empty buffer`)
@@ -132,7 +95,8 @@ async function generateImageWithRetry(prompt: string, apiKey: string, model: str
       console.error(`[Attempt ${attempt}] Exception: ${errorMsg}`)
       
       if (attempt < retries) {
-        await new Promise(r => setTimeout(r, 2000))
+        const waitTime = errorMsg.includes('503') ? 10000 : 2000
+        await new Promise(r => setTimeout(r, waitTime))
         continue
       }
       return { success: false, error: errorMsg }
