@@ -66,7 +66,7 @@ function ShareMenu({ prompt, image }: { prompt: string; image: string }) {
       {open && (
         <div
           role="menu"
-          className="absolute bottom-full mb-2 left-0 right-0 bg-neutral-900 border border-neutral-700 rounded-xl overflow-hidden shadow-xl shadow-black/60 z-50"
+          className="absolute top-full mt-2 left-0 min-w-[200px] bg-neutral-900 border border-neutral-700 rounded-xl overflow-hidden shadow-xl shadow-black/60 z-50"
         >
           <button
             role="menuitem"
